@@ -27,7 +27,8 @@ mongoose
 // =================================================================
 // 2. API ROUTES
 // =================================================================
-const User = require('./Backend/models/User.js'); 
+// FIXED: Removed 'Backend/' because we are already inside the Backend folder
+const User = require('./models/User.js'); 
 
 // CREATE User
 app.post('/api/users', async (req, res) => {
@@ -61,19 +62,16 @@ app.delete('/api/users/:id', async (req, res) => {
 });
 
 // =================================================================
-// 3. SERVE FRONTEND FILES (DEV + PROD)
+// 3. SERVE FRONTEND FILES
 // =================================================================
-if (process.env.NODE_ENV === 'production') {
-  // Serve React build
-  app.use(express.static(path.join(__dirname, 'Frontend', 'build')));
+// FIXED: We use '../Frontend' to step out of the Backend folder and find Frontend.
+// We assume you are serving plain HTML/CSS/JS (not a React build folder).
 
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'Frontend', 'build', 'index.html'));
-  });
-} else {
-  // Development: serve regular Frontend folder (optional)
-  app.use(express.static(path.join(__dirname, 'Frontend')));
-}
+app.use(express.static(path.join(__dirname, '../Frontend')));
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../Frontend', 'index.html'));
+});
 
 // =================================================================
 // 4. START SERVER
