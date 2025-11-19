@@ -1,15 +1,16 @@
-// This is your complete and final server.js file
-
-require("dotenv").config(); // load .env first
+require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const path = require('path');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Use env variables
+// =================================================================
+// 1. DATABASE CONNECTION
+// =================================================================
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI;
 
@@ -18,28 +19,20 @@ if (!MONGO_URI) {
   process.exit(1);
 }
 
-// Your existing database connection - THIS IS GOOD
 mongoose
   .connect(MONGO_URI)
   .then(() => console.log("✅ MongoDB connected!"))
   .catch(err => console.error("❌ MongoDB connection error:", err));
 
-
 // =================================================================
-// PASTE THE NEW CODE HERE
-// This is the new part that adds the API for users
+// 2. API ROUTES
 // =================================================================
+const User = require('./Backend/models/User.js'); 
 
-// First, get the User model you created in models/User.js
-const User = require('./models/User.js');
-
-// 1. CREATE a new user (for your 'Add User' button)
+// CREATE User
 app.post('/api/users', async (req, res) => {
   try {
-    const newUser = new User({
-      name: req.body.name,
-      email: req.body.email,
-    });
+    const newUser = new User({ name: req.body.name, email: req.body.email });
     const savedUser = await newUser.save();
     res.status(201).json(savedUser);
   } catch (error) {
@@ -47,7 +40,7 @@ app.post('/api/users', async (req, res) => {
   }
 });
 
-// 2. READ all users (to display the list on your page)
+// READ All Users
 app.get('/api/users', async (req, res) => {
   try {
     const users = await User.find();
@@ -57,32 +50,7 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-// 3. READ a single user by ID (useful for later)
-app.get('/api/users/:id', async (req, res) => {
-    try {
-        const user = await User.findById(req.params.id);
-        if (!user) return res.status(404).json({ message: 'Cannot find user' });
-        res.json(user);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-});
-
-// 4. UPDATE a user by ID (for an 'Edit' button)
-app.put('/api/users/:id', async (req, res) => {
-  try {
-    const updatedUser = await User.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true } // This option returns the updated document
-    );
-    res.json(updatedUser);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-});
-
-// 5. DELETE a user by ID (for a 'Delete' button)
+// DELETE User
 app.delete('/api/users/:id', async (req, res) => {
   try {
     await User.findByIdAndDelete(req.params.id);
@@ -93,9 +61,21 @@ app.delete('/api/users/:id', async (req, res) => {
 });
 
 // =================================================================
-// END OF NEW CODE
+// 3. SERVE FRONTEND FILES (DEV + PROD)
 // =================================================================
+if (process.env.NODE_ENV === 'production') {
+  // Serve React build
+  app.use(express.static(path.join(__dirname, 'Frontend', 'build')));
 
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'Frontend', 'build', 'index.html'));
+  });
+} else {
+  // Development: serve regular Frontend folder (optional)
+  app.use(express.static(path.join(__dirname, 'Frontend')));
+}
 
-// Your existing server start code - THIS IS GOOD
+// =================================================================
+// 4. START SERVER
+// =================================================================
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
