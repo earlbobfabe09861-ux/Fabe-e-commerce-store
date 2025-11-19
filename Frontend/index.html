@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fabe Agriculture E-commerce Store</title>
+
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      background: linear-gradient(to bottom, #f0f9f4, #e0f7e9);
+      min-height: 100vh;
+    }
+    .container {
+      background-color: #ffffff;
+      padding: 40px;
+      border-radius: 15px;
+      box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+      max-width: 800px;
+      margin-top: 50px;
+    }
+    h1 {
+      color: #2f6f3f;
+      margin-bottom: 30px;
+      text-align: center;
+      font-size: 2.5rem;
+      font-weight: 700;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+    <h1>Fabe Agriculture E-commerce</h1>
+
+    <form id="userForm" onsubmit="handleAddUser(event)">
+      <div class="form-group">
+        <input type="text" id="nameInput" class="form-control" placeholder="Full Name" required>
+      </div>
+
+      <div class="form-group">
+        <input type="email" id="emailInput" class="form-control" placeholder="Email Address" required>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block">Add User</button>
+    </form>
+
+    <table class="table table-hover mt-4">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+
+      <tbody id="userTableBody"></tbody>
+    </table>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
