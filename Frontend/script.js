@@ -100,6 +100,7 @@ function updateAuthUI() {
     }
     if (adminDashboardSection) {
         adminDashboardSection.style.display = isAdminLoggedIn ? 'block' : 'none';
+        // **FIX 1: RENDER DASHBOARD ON INITIAL LOAD IF ADMIN IS LOGGED IN**
         if (isAdminLoggedIn && currentProducts.length > 0) {
             showAdminDashboard(currentProducts);
         }
@@ -150,8 +151,9 @@ async function handleAdminLogin(e) {
             adminLoginMessage.textContent = "Admin Login successful!";
             adminLoginModal.style.display = "none"; 
             
+            // **FIX 2: Ensure products are fetched and dashboard is shown immediately after admin login**
+            await fetchProducts(); 
             updateAuthUI(); 
-            fetchProducts(); 
 
         } else {
             adminLoginMessage.textContent = data.message || "Login failed. Check credentials.";
@@ -197,6 +199,8 @@ async function handleUserLogin(e) {
             userAuthModal.style.display = "none"; 
             
             updateAuthUI(); 
+            // **FIX 3: Close modal and reset form fields after success**
+            userLoginForm.reset();
         } else {
             userAuthMessage.textContent = data.message || "Login failed. Invalid credentials.";
         }
@@ -226,12 +230,14 @@ async function handleUserRegister(e) {
             userAuthMessage.textContent = "Registration successful! Logged in automatically.";
             userAuthModal.style.display = "none"; 
             updateAuthUI(); 
+            // **FIX 4: Close modal and reset form fields after success**
+            userRegisterForm.reset();
         } else {
             userAuthMessage.textContent = data.message || "Registration failed. Email might be in use.";
         }
     } catch (error) {
         userAuthMessage.textContent = "Error registering. Check server connection."; 
-        console.error(error);
+        console.error("Registration Error:", error);
     }
 }
 
@@ -332,6 +338,8 @@ async function checkout() {
             cart = []; 
             updateCartUI();
             cartModal.style.display = "none";
+            // **FIX 5: Immediately fetch products to update stock after successful order**
+            await fetchProducts(); 
         } else {
             const errorData = await res.json();
             alert(`Checkout failed: ${errorData.message}`);
@@ -352,6 +360,10 @@ async function fetchProducts() {
         
         updateAuthUI();
         displayProducts(currentProducts);
+        // **FIX 6: Ensure Admin dashboard is rendered after products are fetched, especially on load**
+        if (!!adminToken) {
+            showAdminDashboard(currentProducts);
+        }
 
     } catch (error) {
         productList.innerHTML = "<p>Failed to load products. Ensure your backend server is running and accessible at the configured API_URL.</p>";
@@ -407,9 +419,9 @@ function createProductCard(product) {
 
 function addToCart(product) {
      if (product.stock <= 0) {
-        alert("This product is currently out of stock!");
-        return;
-    }
+         alert("This product is currently out of stock!");
+         return;
+     }
     const found = cart.find(i => i._id === product._id);
     if (found) {
         if (found.quantity < product.stock) {
