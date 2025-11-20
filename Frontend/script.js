@@ -1,166 +1,410 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // ------------------------------------------------------------------
-    // MOVED ADMIN BUTTON VARIABLES HERE TO FIX THE REFERENCE ERROR!
-    // ------------------------------------------------------------------
-    const adminBtn = document.getElementById('admin-login-btn');
-    const adminModal = document.getElementById('admin-modal');
-    const adminClose = document.getElementById('admin-close');
-    const adminLoginBtn = document.getElementById('admin-login'); 
-    const adminMessage = document.getElementById('admin-message');
-    // ------------------------------------------------------------------
 
-    const products = [
-        // ... (Your existing products array here) ...
-        {name: 'Heirloom Tomatoes', price: 4.99, category: 'Fruits & Vegetables', image: 'images/heirloom_tomatoes.jpg', description: 'Sweet, juicy, perfect for salads.', stock: 20, rating: 4.8},
-        {name: 'Organic Carrots', price: 3.99, category: 'Fruits & Vegetables', image: 'images/organic_carrots.jpg', description: 'Crisp and fresh.', stock: 30, rating: 4.6},
-        {name: 'Sweet Corn', price: 5.50, category: 'Fruits & Vegetables', image: 'images/sweet_corn.jpg', description: 'Picked this morning!', stock: 25, rating: 4.7},
-        {name: 'Strawberries', price: 6.99, category: 'Fruits & Vegetables', image: 'images/strawberries.jpg', description: 'Fresh and sweet.', stock: 15, rating: 4.9},
-        {name: 'Pasture-Raised Eggs', price: 6.25, category: 'Dairy & Eggs', image: 'images/pasture_raised_eggs.jpg', description: 'Rich yolks from happy hens.', stock: 50, rating: 4.8},
-        {name: 'Organic Milk', price: 4.50, category: 'Dairy & Eggs', image: 'images/organic_milk.jpg', description: 'Fresh organic cow milk.', stock: 40, rating: 4.7},
-        {name: 'Garden Shovel', price: 12.99, category: 'Agricultural Tools', image: 'images/garden_shovel.jpg', description: 'Sturdy steel shovel for gardening.', stock: 15, rating: 4.5},
-        {name: 'Watering Can', price: 8.99, category: 'Agricultural Tools', image: 'images/watering_can.jpg', description: 'Perfect for watering plants.', stock: 25, rating: 4.6},
-        {name: 'Gardening Gloves', price: 5.99, category: 'Agricultural Tools', image: 'images/gardening_gloves.jpg', description: 'Protect your hands while gardening.', stock: 35, rating: 4.7},
-        {name: 'Tomato Seeds', price: 2.50, category: 'Seeds & Plants', image: 'images/tomato_seeds.jpg', description: 'Grow your own tomatoes at home.', stock: 100, rating: 4.8},
-        {name: 'Rose Sapling', price: 10.99, category: 'Seeds & Plants', image: 'images/rose_sapling.jpg', description: 'Beautiful red roses.', stock: 20, rating: 4.9},
-        {name: 'Local Honey', price: 9.99, category: 'Organic & Pantry', image: 'images/local_honey.jpg', description: 'Raw organic honey.', stock: 30, rating: 4.8},
-        {name: 'Organic Flour', price: 3.75, category: 'Organic & Pantry', image: 'images/organic_flour.jpg', description: 'High-quality wheat flour.', stock: 50, rating: 4.7}
-    ];
-
+    // =================================================================
+    // 1. INITIAL SETUP & ELEMENT SELECTION
+    // =================================================================
     const productListEl = document.getElementById('product-list');
     const cartCountEl = document.getElementById('cart-count');
+    const cartIcon = document.getElementById('cart-icon');
+
+    // Standard Modals
     const cartModal = document.getElementById('cart-modal');
     const cartItemsEl = document.getElementById('cart-items');
     const cartTotalEl = document.getElementById('cart-total');
-    const cartIcon = document.getElementById('cart-icon');
-
     const productModal = document.getElementById('product-modal');
     const productClose = document.getElementById('product-close');
-    const productModalImage = document.getElementById('product-modal-image');
-    const productModalName = document.getElementById('product-modal-name');
-    const productModalDescription = document.getElementById('product-modal-description');
-    const productModalPrice = document.getElementById('product-modal-price');
-    const productModalStock = document.getElementById('product-modal-stock');
-    const productModalRating = document.getElementById('product-modal-rating');
     const productModalAdd = document.getElementById('product-modal-add');
-
     const categoryFilter = document.getElementById('category-filter');
-
+    
+    // Admin Login Elements
+    const adminLoginBtn = document.getElementById('admin-login-btn');
+    const adminLoginModal = document.getElementById('admin-login-modal');
+    const adminLoginClose = document.getElementById('admin-login-close');
+    const adminLoginForm = document.getElementById('admin-login-form');
+    const loginMessage = document.getElementById('login-message');
+    const adminDashboardSection = document.getElementById('admin-dashboard-section');
+    const adminContent = document.getElementById('admin-content');
+    
+    // Admin Product Form Elements (NEW)
+    const productFormModal = document.getElementById('product-form-modal');
+    const productFormClose = document.getElementById('product-form-close');
+    const productFormTitle = document.getElementById('product-form-title');
+    const adminProductForm = document.getElementById('admin-product-form');
+    const productIdField = document.getElementById('product-id-field');
+    const productNameInput = document.getElementById('product-name-input');
+    const productPriceInput = document.getElementById('product-price-input');
+    const productStockInput = document.getElementById('product-stock-input');
+    const productDescriptionInput = document.getElementById('product-description-input');
+    const productImageUrlInput = document.getElementById('product-image-url-input');
+    const productCategoryInput = document.getElementById('product-category-input');
+    
+    // Global State
+    let products = [];
     let cart = [];
-    let currentProductIndex = null;
-    let loggedInUser = null; 
+    let currentProduct = null;
+    let adminToken = localStorage.getItem('adminToken'); // Load token from storage
+    
+    // =================================================================
+    // 2. SECURE API CALLS (REUSABLE FUNCTION)
+    // =================================================================
+
+    // NEW: Reusable function to make authenticated calls
+    async function secureApiCall(url, method = 'GET', body = null) {
+        if (!adminToken) {
+            console.error('Admin token missing. Cannot perform secure action.');
+            alert('You must be logged in as an admin to perform this action.');
+            return { ok: false, status: 401 };
+        }
+
+        const headers = {
+            'Authorization': `Bearer ${adminToken}`, // CRITICAL: Send the JWT token
+            'Content-Type': 'application/json'
+        };
+
+        const config = {
+            method: method,
+            headers: headers,
+        };
+
+        if (body) {
+            config.body = JSON.stringify(body);
+        }
+
+        // FIX 1: Explicitly target the backend server using IP (port 5000)
+        return fetch(`http://127.0.0.1:5000${url}`, config); 
+    }
+    
+    // =================================================================
+    // 3. DATA FETCHING (PRODUCTS)
+    // =================================================================
+
+    // Function to fetch products from the backend
+    async function fetchProducts(filter = 'All') {
+        try {
+            // FIX 2: Explicitly target the backend server using IP (port 5000)
+            const response = await fetch('http://127.0.0.1:5000/api/products'); 
+            if (!response.ok) {
+                throw new Error('Failed to fetch products from the server');
+            }
+            products = await response.json(); 
+            renderProducts(filter); // This function is now defined below!
+            
+            // If admin is logged in, re-render the dashboard table to reflect changes
+            if (adminToken) {
+                renderAdminProductTable();
+            }
+        } catch (error) {
+            console.error('Error fetching products:', error);
+            productListEl.innerHTML = '<p style="color:red;">Error loading products. Please check the server.</p>';
+        }
+    }
+
+    // =================================================================
+    // 4. RENDERING FUNCTIONS (PRODUCTS & UI) - MISSING CODE ADDED HERE!
+    // =================================================================
 
     function renderProducts(filter = 'All') {
-        productListEl.innerHTML = '';
-        products.forEach((p, i) => {
-            if(filter !== 'All' && p.category !== filter) return;
+        const filteredProducts = products.filter(p => 
+            filter === 'All' || p.category === filter
+        );
 
-            const card = document.createElement('div');
-            card.className = 'product-card';
-            card.innerHTML = `
-                <img src="${p.image}" alt="${p.name}" data-index="${i}">
-                <h3 data-index="${i}">${p.name}</h3>
-                <p class="price">$${p.price.toFixed(2)}</p>
-                <p>${p.description}</p>
-                <p>Stock: ${p.stock}</p>
-                <p>Rating: ⭐ ${p.rating}</p>
-                <button data-index="${i}">Add to Cart</button>
-            `;
-            productListEl.appendChild(card);
+        if (productListEl) {
+            if (filteredProducts.length === 0) {
+                productListEl.innerHTML = '<p style="text-align: center; color: gray;">No products available. Add one using the Admin Dashboard!</p>';
+                return;
+            }
+
+            productListEl.innerHTML = filteredProducts.map(p => `
+                <div class="product-card" data-id="${p._id}">
+                    <img src="${p.imageUrl}" alt="${p.name}" class="product-image">
+                    <h4 class="product-name">${p.name}</h4>
+                    <p class="product-price">$${p.price.toFixed(2)}</p>
+                    <button class="add-to-cart-btn" data-id="${p._id}">Add to Cart</button>
+                </div>
+            `).join('');
+
+            // You would typically attach event listeners for the cart buttons here
+        }
+    }
+
+    // Function to update the cart count display (Added for completeness)
+    function updateCartCount() {
+        if (cartCountEl) {
+            const totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
+            cartCountEl.textContent = totalItems;
+        }
+    }
+    
+    // =================================================================
+    // 5. ADMIN LOGIN LOGIC
+    // =================================================================
+
+    // Handle Admin Login Form Submission
+    if (adminLoginForm) {
+        adminLoginForm.addEventListener('submit', async (e) => {
+            e.preventDefault(); 
+
+            const email = document.getElementById('admin-email').value;
+            const password = document.getElementById('admin-password-input').value; 
+            
+            loginMessage.textContent = 'Logging in...';
+
+            try {
+                // FIX 3: Explicitly target the backend server using IP (port 5000)
+                const response = await fetch('http://127.0.0.1:5000/api/login', { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    loginMessage.textContent = `Login successful! Welcome, ${data.name}.`;
+                    loginMessage.style.color = 'green';
+                    
+                    adminToken = data.token;
+                    localStorage.setItem('adminToken', adminToken);
+                    
+                    setTimeout(() => {
+                        adminLoginModal.style.display = 'none';
+                        adminLoginForm.reset();
+                        checkAdminStatus();
+                    }, 1000);
+
+                } else {
+                    loginMessage.textContent = data.message || 'Login failed.';
+                    loginMessage.style.color = 'red';
+                }
+            } catch (error) {
+                loginMessage.textContent = 'Network error. Could not reach server.';
+                loginMessage.style.color = 'red';
+            }
         });
     }
 
-    function updateCart() {
-        cartCountEl.textContent = cart.length;
-        cartItemsEl.innerHTML = '';
-        let total = 0;
-
-        cart.forEach((item, index) => {
-            total += item.price;
-            const li = document.createElement('li');
-            li.innerHTML = `
-                ${item.name} - $${item.price.toFixed(2)} 
-                <button class="remove-btn" data-index="${index}">Remove</button>
-            `;
-            cartItemsEl.appendChild(li);
-        });
-
-        cartTotalEl.textContent = total.toFixed(2);
-    }
-
-    cartItemsEl.addEventListener('click', (e) => {
-        if(e.target.classList.contains('remove-btn')) {
-            const index = e.target.dataset.index;
-            cart.splice(index, 1); 
-            updateCart();
-        }
-    });
-
-    // Product List Click
-    productListEl.addEventListener('click', (e) => {
-        const index = e.target.dataset.index;
-        if(e.target.tagName === 'BUTTON') {
-            cart.push(products[index]);
-            updateCart();
-            e.target.textContent = 'Added!';
-            setTimeout(() => e.target.textContent = 'Add to Cart', 1000);
-        } else if(e.target.tagName === 'IMG' || e.target.tagName === 'H3') {
-            currentProductIndex = index;
-            const product = products[index];
-            productModalImage.src = product.image;
-            productModalName.textContent = product.name;
-            productModalDescription.textContent = product.description;
-            productModalPrice.textContent = `$${product.price.toFixed(2)}`;
-            productModalStock.textContent = `Stock: ${product.stock}`;
-            productModalRating.textContent = `Rating: ⭐ ${product.rating}`;
-            productModal.style.display = 'block';
-        }
-    });
-
-    // Add to Cart from Modal
-    productModalAdd.addEventListener('click', () => {
-        if(currentProductIndex !== null) {
-            cart.push(products[currentProductIndex]);
-            updateCart();
-            productModalAdd.textContent = 'Added!';
-            setTimeout(() => productModalAdd.textContent = 'Add to Cart', 1000);
-        }
-    });
-
-    // Close Modals
-    cartIcon.addEventListener('click', () => cartModal.style.display = 'block');
-    document.getElementById('cart-close').addEventListener('click', () => cartModal.style.display = 'none');
-    productClose.addEventListener('click', () => productModal.style.display = 'none');
-
-    // Admin Login Logic
-    adminLoginBtn.addEventListener('click', () => {
-        const username = document.getElementById('admin-username').value;
-        const password = document.getElementById('admin-password').value;
-
-        if(username === 'admin' && password === 'admin345') {
-            loggedInUser = 'admin';
-            adminMessage.textContent = 'Admin Login successful!';
-            adminMessage.style.color = 'green';
-            setTimeout(() => adminModal.style.display = 'none', 1000);
-        } else if (username === 'user' && password === 'user123') {
-             loggedInUser = 'user';
-            adminMessage.textContent = 'User Login successful!';
-            adminMessage.style.color = 'green';
-            setTimeout(() => adminModal.style.display = 'none', 1000);
+    // Logic to show or hide the Admin Login/Dashboard link
+    function checkAdminStatus() {
+        if (adminToken) {
+            adminLoginBtn.textContent = 'Admin Dashboard';
+            adminLoginBtn.removeEventListener('click', openLoginModal);
+            adminLoginBtn.addEventListener('click', displayAdminDashboard);
         } else {
-            loggedInUser = null;
-            adminMessage.textContent = 'Invalid credentials';
-            adminMessage.style.color = 'red';
+            adminLoginBtn.textContent = 'Admin Login';
+            adminLoginBtn.removeEventListener('click', displayAdminDashboard);
+            adminLoginBtn.addEventListener('click', openLoginModal);
+            adminDashboardSection.style.display = 'none';
         }
-    });
+    }
+    
+    function openLoginModal(e) {
+          e.preventDefault();
+          // If a token exists but login is clicked, treat it as a dashboard view
+          if(adminToken) {
+              displayAdminDashboard();
+          } else {
+              adminLoginModal.style.display = 'block';
+              loginMessage.textContent = '';
+          }
+    }
+    
+    // Attach the initial handler for the navbar link
+    checkAdminStatus(); 
+    
+    // Close handlers
+    if (adminLoginClose) {
+        adminLoginClose.addEventListener('click', () => adminLoginModal.style.display = 'none');
+    }
+    if (productFormClose) {
+        productFormClose.addEventListener('click', () => productFormModal.style.display = 'none');
+    }
 
-    // Admin Modal Open/Close Handlers
-    adminBtn.addEventListener('click', () => adminModal.style.display = 'block');
-    adminClose.addEventListener('click', () => adminModal.style.display = 'none');
 
-    // Category Filter Change
-    categoryFilter.addEventListener('change', (e) => {
-        renderProducts(e.target.value);
-    });
+    // =================================================================
+    // 6. ADMIN DASHBOARD & CRUD MANAGEMENT
+    // =================================================================
+    
+    function displayAdminDashboard() {
+        adminLoginModal.style.display = 'none';
+        adminDashboardSection.style.display = 'block';
+        adminContent.innerHTML = '';
+        
+        const header = document.createElement('div');
+        header.style.cssText = 'display: flex; justify-content: space-between; margin-bottom: 20px;';
+        
+        const title = document.createElement('h3');
+        title.textContent = 'Product Management';
+        
+        const controlsDiv = document.createElement('div');
+        
+        const logoutBtn = document.createElement('button');
+        logoutBtn.textContent = 'Logout';
+        logoutBtn.style.cssText = 'background-color: #f44336; color: white; padding: 10px; border: none; cursor: pointer; margin-left: 10px; border-radius: 4px;';
+        logoutBtn.addEventListener('click', handleAdminLogout);
+        
+        const addProductBtn = document.createElement('button');
+        addProductBtn.textContent = 'Add New Product';
+        addProductBtn.style.cssText = 'background-color: #007bff; color: white; padding: 10px; border: none; cursor: pointer; border-radius: 4px;';
+        addProductBtn.addEventListener('click', () => openProductForm()); // Open form for adding
+        
+        controlsDiv.appendChild(addProductBtn);
+        controlsDiv.appendChild(logoutBtn);
+        
+        header.appendChild(title);
+        header.appendChild(controlsDiv);
+        adminContent.appendChild(header);
 
-    renderProducts();
+        renderAdminProductTable();
+    }
+    
+    function renderAdminProductTable() {
+        // Find existing table or create a new one
+        let table = document.getElementById('admin-product-table');
+        if (!table) {
+            table = document.createElement('table');
+            table.id = 'admin-product-table';
+            adminContent.appendChild(table);
+        }
+        
+        table.innerHTML = `
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Price</th>
+                    <th>Stock</th>
+                    <th>Category</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="admin-product-table-body"></tbody>
+        `;
+
+        const tbody = document.getElementById('admin-product-table-body');
+        
+        products.forEach(p => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${p.name}</td>
+                <td>$${p.price.toFixed(2)}</td>
+                <td>${p.stock}</td>
+                <td>${p.category || 'N/A'}</td>
+                <td>
+                    <button class="admin-edit-btn" data-id="${p._id}">Edit</button>
+                    <button class="admin-delete-btn" data-id="${p._id}" style="background:#e53935;">Delete</button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+        
+        // Attach event listener for the table actions (Edit/Delete)
+        tbody.addEventListener('click', handleProductAction);
+    }
+
+    // Handles Edit and Delete button clicks in the Admin table
+    function handleProductAction(e) {
+        const id = e.target.dataset.id;
+        
+        if (e.target.classList.contains('admin-edit-btn')) {
+            openProductForm(id); // Open form for editing
+        } else if (e.target.classList.contains('admin-delete-btn')) {
+            handleProductDelete(id); // Execute delete
+        }
+    }
+    
+    // Opens and populates the form modal for Add or Edit
+    function openProductForm(id = null) {
+        adminProductForm.reset();
+        productIdField.value = '';
+        productFormModal.style.display = 'block';
+
+        if (id) {
+            productFormTitle.textContent = 'Edit Product';
+            const productToEdit = products.find(p => p._id === id);
+            
+            if (productToEdit) {
+                productIdField.value = id;
+                productNameInput.value = productToEdit.name;
+                productPriceInput.value = productToEdit.price;
+                productStockInput.value = productToEdit.stock;
+                productDescriptionInput.value = productToEdit.description;
+                productImageUrlInput.value = productToEdit.imageUrl;
+                productCategoryInput.value = productToEdit.category;
+            }
+        } else {
+            productFormTitle.textContent = 'Add New Product';
+        }
+    }
+    
+    // Handles the submission of the Add/Edit form
+    adminProductForm.addEventListener('submit', handleProductSubmit);
+
+    async function handleProductSubmit(e) {
+        e.preventDefault();
+        
+        const id = productIdField.value;
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `/api/products/${id}` : '/api/products';
+        
+        const productData = {
+            name: productNameInput.value,
+            price: parseFloat(productPriceInput.value),
+            stock: parseInt(productStockInput.value),
+            description: productDescriptionInput.value,
+            imageUrl: productImageUrlInput.value,
+            category: productCategoryInput.value
+        };
+
+        try {
+            const response = await secureApiCall(url, method, productData);
+            
+            if (response.ok) {
+                alert(`Product ${id ? 'updated' : 'added'} successfully!`);
+                productFormModal.style.display = 'none';
+                fetchProducts(); // Refresh the list
+            } else {
+                const data = await response.json();
+                alert(`Error: ${data.message || 'Failed to save product.'}`);
+            }
+        } catch (error) {
+            console.error('API submission error:', error);
+            alert('A network error occurred.');
+        }
+    }
+
+    // Handles the deletion of a product
+    async function handleProductDelete(id) {
+        if (!confirm('Are you sure you want to delete this product?')) {
+            return;
+        }
+
+        try {
+            const response = await secureApiCall(`/api/products/${id}`, 'DELETE');
+
+            if (response.ok) {
+                alert('Product deleted successfully!');
+                fetchProducts(); // Refresh the list
+            } else {
+                const data = await response.json();
+                alert(`Error: ${data.message || 'Failed to delete product.'}`);
+            }
+        } catch (error) {
+            console.error('API deletion error:', error);
+            alert('A network error occurred.');
+        }
+    }
+    
+    // Handle Admin Logout
+    function handleAdminLogout() {
+        localStorage.removeItem('adminToken');
+        adminToken = null;
+        checkAdminStatus(); 
+        adminDashboardSection.style.display = 'none';
+        // We use window.location.href to redirect to the homepage after logout
+        window.location.href = '/'; 
+    }
+    
+    // =================================================================
+    // 7. INITIALIZATION
+    // =================================================================
+    fetchProducts();
 });
